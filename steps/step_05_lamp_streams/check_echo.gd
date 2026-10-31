@@ -1,8 +1,8 @@
 extends SceneTree
 ## Measures the deep echo: two seeds whose rooms are the same rooms, shifted by one. When a room's seed is the run's
-## seed plus the room's number, seed 43's room 5 has the seed of seed 42's room 6, so it rolls the same dice, and
-## the whole run of seed 43 is seed 42 one room earlier. Data only, like the other checks: no level is started, the
-## chain is asked for its plans and the plans are compared.
+## seed plus the room's number, seed 43's room 5 has the seed of seed 42's room 6, so it gets the same random
+## numbers, and the whole run of seed 43 is seed 42 one room earlier. Data only, like the other checks: no level
+## is started, the chain is asked for its plans and the plans are compared.
 ##
 ##   godot --headless --path godot/06-seeds-you-can-share -s res://steps/step_05_lamp_streams/check_echo.gd
 ##

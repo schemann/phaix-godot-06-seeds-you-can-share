@@ -1,9 +1,9 @@
 extends RefCounted
 ## The chain as data: one plan per room, made one at a time from a seed.
 ## It never touches the scene tree, so the same seed always gives the same chain.
-## Every room draws its dice from streams of its own, started again for each room from the run's seed, the
-## room's number and the stream's name (Seeds.child): the layout, the locks and the props of a room never
-## depend on how many dice another room has drawn.
+## Every room draws its random numbers from streams of its own, started again for each room from the run's
+## seed, the room's number and the stream's name (Seeds.child): the layout, the locks and the props of a room
+## never depend on how many random numbers another room has drawn.
 ## The room at goal_index is the goal room, the end of the run.
 ## Some rooms are locked. A locked room holds the key to its own door, at one of the room's
 ## key spots, so a run can always be finished (see _decide_contents).
@@ -129,13 +129,13 @@ func clear_prop_spots() -> void:
 func prop_scene(type: int, prop: int) -> PackedScene:
 	return PROP_SETS[type].scenes[prop]
 
-## A weighted choice in three steps: add the weights up (sum), roll a number up to that sum (roll), walk along
-## the weights until the roll is used up (walk). roll is 0 up to 1. A bigger weight is a bigger slice of the roll.
-static func weighted_pick(weights: Array[float], roll: float) -> int:
+## A weighted choice in three steps: add the weights up (sum), take a random number up to that sum (value), walk along
+## the weights until the value is used up (walk). value is 0 up to 1. A bigger weight is a bigger slice of the range.
+static func weighted_pick(weights: Array[float], value: float) -> int:
 	var total := 0.0
 	for weight in weights:
 		total += weight
-	var target := roll * total
+	var target := value * total
 	for i in weights.size():
 		target -= weights[i]
 		if target < 0.0:
@@ -161,34 +161,34 @@ func _add(type: int, placed: Transform3D) -> Plan:
 	plans.append(plan)
 	return plan
 
-## Locks and keys. The dice come from _content_rng, never from _rng, so the rooms of a seed are the
+## Locks and keys. The random numbers come from _content_rng, never from _rng, so the rooms of a seed are the
 ## same with or without locks. The stream is started again for every room from the seed and the room's
-## number, so nothing that happens in another room moves this room's roll. Both dice are rolled for every
-## room with key spots, locked or not, so a room gets the same roll whatever the lock chance is.
+## number, so nothing that happens in another room moves this room's numbers. Both numbers are drawn for every
+## room with key spots, locked or not, so a room gets the same numbers whatever the lock chance is.
 func _decide_contents(plan: Plan) -> void:
 	var spot_count := _modules[plan.type].key_spots.size()
 	if spot_count == 0:
 		return # the goal room has no door and nothing to lock
 	_content_rng.seed = Seeds.child(_chain_seed, "locks", plan.index)
-	var roll := _content_rng.randf()
+	var value := _content_rng.randf()
 	var spot := _content_rng.randi_range(0, spot_count - 1)
 	# Never locked: room 0, because the run starts with a door that simply opens, and the room before
 	# the goal, so the last stretch is a clean sprint to the pad. (The goal room has no door.)
 	var always_open := plan.index == 0 or plan.index == goal_index - 1
-	if roll < lock_chance and not always_open:
+	if value < lock_chance and not always_open:
 		plan.locked = true
 		plan.key_spot = spot # the key lies in the same room as its lock
 
-## Props. Their own dice, like the locks': one stream per room, so a room's props depend on nothing else: no
-## lock, no goal room, no other room moves them, and they move none of those. One roll for every spot: the
-## room type's set says what it may be.
+## Props. Their own generator, like the locks': one stream per room, so a room's props depend on nothing
+## else: no lock, no goal room, no other room moves them, and they move none of those. One random number
+## for every spot: the room type's set says what it may be.
 func _decide_props(plan: Plan) -> void:
 	var spot_count := _modules[plan.type].prop_spots.size()
 	if spot_count == 0:
 		return # the goal room has no prop spots
 	var prop_set := PROP_SETS[plan.type]
 	var weights: Array[float] = prop_set.weights.duplicate()
-	weights.append(prop_set.empty_weight) # the last slice of the roll is "nothing"
+	weights.append(prop_set.empty_weight) # the last slice of the range is "nothing"
 	_prop_rng.seed = Seeds.child(_chain_seed, "props", plan.index)
 	for i in spot_count:
 		var pick := weighted_pick(weights, _prop_rng.randf())
@@ -206,7 +206,7 @@ func _hits_history(box: AABB) -> bool:
 ## Array.shuffle() would use the global one. The goal room is never drawn: it is only placed at goal_index.
 ## A rare room is not even a candidate while the gap to the last one is too small.
 ## The draws come from the layout stream of the room that is being placed, so the order of a room never
-## depends on how many dice an earlier room used.
+## depends on how many random numbers an earlier room used.
 func _weighted_types() -> Array[int]:
 	_rng.seed = Seeds.child(_chain_seed, "layout", plans.size())
 	var left: Array[int] = []

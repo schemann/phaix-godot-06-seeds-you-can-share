@@ -1,5 +1,5 @@
 extends RefCounted
-## Seeds you can share. A seed is a text a person can type, read out and copy ("BLUE-FOX", "42"). The game turns
+## Seeds you can share. A seed is a text you can type, read out and copy ("BLUE-FOX", "42"). The game turns
 ## it into a number for its random generators. Only static functions, no state: the same text is the same
 ## number on every machine, in every run.
 
@@ -7,7 +7,7 @@ const MASK := 0xFFFFFFFF ## Seeds are 32-bit numbers.
 const MAX_LENGTH := 24 ## The most characters a seed text may have.
 const MAX_DIGITS := 9 ## Plain digits up to this length are the number itself.
 
-## What a person typed, made canonical: no spaces at the ends, capital letters. "blue-fox " and "BLUE-FOX" are one seed.
+## What you typed, made canonical: no spaces at the ends, capital letters. "blue-fox " and "BLUE-FOX" are one seed.
 static func normalize(text: String) -> String:
 	return text.strip_edges().to_upper()
 

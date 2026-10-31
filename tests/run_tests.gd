@@ -64,11 +64,11 @@ const CONTENT_SEEDS := 200 ## Seeds 1..200 for the comparisons that build two ch
 const PROP_SEEDS := 500 ## Seeds 1..500 for the prop rules.
 const VAULT_PLATFORM_HEIGHT := 0.12 ## The raised middle of the vault: a step the capsule climbs, like the goal pad.
 const ECHO_SEEDS := 200 ## Neighbour seeds 1..201 for the deep echo.
-const EXPERIMENT_SEEDS := 100 ## Seeds 1..100 for the extra-dice experiment.
-const EXPERIMENT_ROOMS: Array[int] = [1, 5, 9, 14] ## The rooms that get the extra dice.
-## The experiment of the video: a feature that rolls three more dice in one room, written into the chain's source where
-## a viewer types it, just before the lock roll. The README shows the same three lines.
-const EXPERIMENT_ANCHOR := "\tvar roll := _content_rng.randf()\n"
+const EXPERIMENT_SEEDS := 100 ## Seeds 1..100 for the extra-randf experiment.
+const EXPERIMENT_ROOMS: Array[int] = [1, 5, 9, 14] ## The rooms that get the extra randf() calls.
+## The experiment of the video: a feature that calls randf() three more times in one room, written into the chain's source
+## where a viewer types it, just before the lock's randf(). The README shows the same three lines.
+const EXPERIMENT_ANCHOR := "\tvar value := _content_rng.randf()\n"
 const EXPERIMENT_LINES := "\tif plan.index == %d:\n\t\tfor i in %d:\n\t\t\t_content_rng.randf()\n"
 ## Rooms that the default settings lock in seed 42 (goal room 20, lock chance 0.4), and the vaults it has, by step.
 ## Steps 0 to 2 are tutorial 05's runs (seed 42 is the number 42); the seed trees of steps 3 to 5 give other runs.
@@ -120,8 +120,8 @@ func _initialize() -> void:
 
 	await _run("code rules: no class_name, no global random, no wall clock, input only through named actions", test_code_rules)
 	await _run("code rules: the HUD only reads the level", test_hud_reads_only)
-	await _run("code rules: the door never knows what a key is, the key never knows the level, every stream of dice has one place and, from step 3, one seed per room", test_key_rules)
-	await _run("code rules: props and room weights are data (Resource scripts with exports, .tres files), the code only rolls and walks", test_data_rules)
+	await _run("code rules: the door never knows what a key is, the key never knows the level, every generator has one place and, from step 3, one seed per room", test_key_rules)
+	await _run("code rules: props and room weights are data (Resource scripts with exports, .tres files), the code only draws and walks", test_data_rules)
 	await _run("steps: each step changes only what its concept needs, everything else is copied forward", test_copy_forward)
 	await _run("step_00_start: tutorial 05's final state, file for file (only the folder names differ)", test_step_zero_is_tutorial_05)
 
@@ -137,9 +137,9 @@ func _initialize() -> void:
 	await _run("seeds: the same seed text gives the same run in a level, wherever it comes from (typed, N, R, the property)", test_seed_text_in_levels)
 	for step in STEPS:
 		await _run("%s: a restart (R, N, a typed seed) with the player standing at the first door does not open the new room's door" % step, test_restart_at_the_door.bind(step))
-	await _run("streams: from step 3 every room draws from its own streams: a room's dice depend on the seed, the stream and the room's number only", test_room_streams)
-	await _run("experiment: three more dice in one room move every room after it in steps 0, 1 and 2 (seeds 1-%d)" % EXPERIMENT_SEEDS, test_extra_dice_reshuffle)
-	await _run("experiment: three more dice in one room move nothing else in steps 3, 4 and 5: rooms before and after are identical (seeds 1-%d, rooms %s)" % [EXPERIMENT_SEEDS, EXPERIMENT_ROOMS], test_extra_dice_independent)
+	await _run("streams: from step 3 every room draws from its own streams: a room's random numbers depend on the seed, the stream and the room's number only", test_room_streams)
+	await _run("experiment: three more randf() calls in one room move every room after it in steps 0, 1 and 2 (seeds 1-%d)" % EXPERIMENT_SEEDS, test_extra_calls_reshuffle)
+	await _run("experiment: three more randf() calls in one room move nothing else in steps 3, 4 and 5: rooms before and after are identical (seeds 1-%d, rooms %s)" % [EXPERIMENT_SEEDS, EXPERIMENT_ROOMS], test_extra_calls_independent)
 	await _run("echo: with summed seeds (step 3) seed s + 1 is seed s one room earlier: every pair of 200 echoes, locks and props", test_echo_before)
 	await _run("echo: with mixed seeds (steps 4 and 5) the same measurement finds no echo, the agreement is chance", test_echo_after)
 	await _run("echo: child() itself: (s + 1, k) equals (s, k + 1) for every pair when added, for none when mixed", test_echo_in_child)
@@ -160,7 +160,7 @@ func _initialize() -> void:
 		await _run("goal (%s): other goal rooms (1, 2, 7, 50, 120), 100 seeds each" % which, test_goal_other_indices.bind(chain_script))
 		await _run("goal (%s): a goal that does not fit waits for the next room, and the plans stay valid" % which, test_goal_waits.bind(chain_script))
 	await _run("contents: locks never move a room, in every step (seeds 1-%d)" % CONTENT_SEEDS, test_locks_keep_rooms)
-	await _run("contents: more lock chance only adds locks, the key spots stay; the goal room moves no roll (seeds 1-%d)" % CONTENT_SEEDS, test_contents_second_stream)
+	await _run("contents: more lock chance only adds locks, the key spots stay; the goal room moves no random number (seeds 1-%d)" % CONTENT_SEEDS, test_contents_second_stream)
 	await _run("contents: room 0, the room before the goal and the goal room are never locked, a lock has a key in the same room (tutorial 05's chain and the finished one)", test_contents_rules)
 	await _run("contents: seed 42 locks the rooms the table says in every step, the lock rate is the chance", test_contents_statistics)
 	await _run("solvable: seeds 1-%d, every lock has its key in its own room, the player never gets stuck (finished chain)" % SEED_COUNT, test_solvable_seeds)
@@ -184,8 +184,9 @@ func _initialize() -> void:
 		await _run("%s: the sealed entrance of room 0 holds" % step, test_sealed_entrance.bind(step))
 		await _run("%s: right stick turns the body and tilts the head, clamped at 89 deg" % step, test_stick_look.bind(step))
 		await _run("%s: mouse look maths (0.002 rad per pixel, clamped)" % step, test_mouse_math.bind(step))
-	if DisplayServer.get_name() == "headless":
-		_skip("mouse capture: Esc releases, a click recaptures; the mouse is released at the finish and while the seed box is up and captured again by a restart", "the headless display server never reports a captured mouse; tools/capture.gd checks it in a window")
+	var mouse_test := "mouse capture: Esc releases, a click recaptures; the mouse is released at the finish and while the seed box is up and captured again by a restart"
+	if DisplayServer.get_name() == "headless" and _selected(mouse_test):
+		_skip(mouse_test, "the headless display server never reports a captured mouse; tools/capture.gd checks it in a window")
 	for step in STEPS:
 		await _run("%s: a door in the accent material opens on approach, lets a ray pass when open and blocks when closed" % step, test_door.bind(step))
 		await _run("%s: a door never closes on the player" % step, test_door_waits_for_the_swing.bind(step))
@@ -211,7 +212,7 @@ func _initialize() -> void:
 	await _run("props: a prop is solid: the player walking into one stops at its face", test_props_are_solid)
 	for step in STEPS:
 		await _run("%s: the prop sets are Resources: one .tres per room type, scenes and weights match, the long hall favours pillars, the wide room tables and shelves" % step, test_prop_sets.bind(step))
-	await _run("weighted pick: sum, roll, walk: boundaries, zero weights, and 100000 rolls land in proportion", test_weighted_pick)
+	await _run("weighted pick: sum, value, walk: boundaries, zero weights, and 100000 values land in proportion", test_weighted_pick)
 	await _run("props: the weights decide: what a set holds shows in the plans in proportion (seeds 1-%d), and changing the data changes the plans" % PROP_SEEDS, test_prop_distribution)
 	for step in STEPS:
 		await _run("%s: the room weights are a Resource: the data decides the order, the same seed gives the same order" % step, test_room_weights.bind(step))
@@ -265,12 +266,18 @@ func _initialize() -> void:
 
 ## Runs one test unless a `-- --only=text` argument asks for other tests only.
 func _run(test_name: String, test: Callable) -> void:
-	for argument in OS.get_cmdline_user_args():
-		if argument.begins_with("--only=") and not test_name.contains(argument.trim_prefix("--only=")):
-			return
+	if not _selected(test_name):
+		return
 	await process_frame # the engine empties its message queue between tests: the chain tests build thousands of room scenes
 	var failures: Array[String] = await test.call()
 	_report(test_name, failures)
+
+## False when a `-- --only=text` argument asks for other tests only (the tests and the notes about tests that cannot run).
+func _selected(test_name: String) -> bool:
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--only=") and not test_name.contains(argument.trim_prefix("--only=")):
+			return false
+	return true
 
 func _steps_from(first: String) -> Array[String]:
 	var result: Array[String] = []
@@ -1419,7 +1426,7 @@ func test_states(step: String) -> Array[String]:
 	_expect(failures, changes == [STATE_RUNNING, STATE_FINISHED], "state changes %s, expected [RUNNING, FINISHED]" % [changes])
 	_expect(failures, level.current == SHORT_GOAL, "finished in room %d, expected %d" % [level.current, SHORT_GOAL])
 
-	# The player stops: frozen, no velocity, and nothing a person can press moves it or turns it.
+	# The player stops: frozen, no velocity, and nothing a player can press moves it or turns it.
 	await _wait_physics(20)
 	_expect(failures, player.get("frozen") == true, "the player is not frozen after the finish")
 	_expect(failures, player.velocity == Vector3.ZERO, "the player moves with %s after the finish" % player.velocity)
@@ -1954,7 +1961,7 @@ func test_full_run() -> Array[String]:
 	_expect(failures, changes == [STATE_RUNNING, STATE_FINISHED], "state changes %s" % [changes])
 	_expect(failures, level.current == 20 and level.chain.goal_index == 20 and level.chain.plans.size() == 21, "finished in room %d with %d plans (goal_index %d)" % [level.current, level.chain.plans.size(), level.chain.goal_index])
 	var run_time: float = level.run_time
-	# 20 rooms of 10 to 18 m at 5 m/s, a detour for every key: well under two and a half minutes for the autopilot, a person takes longer.
+	# 20 rooms of 10 to 18 m at 5 m/s, a detour for every key: well under two and a half minutes for the autopilot, a player takes longer.
 	_expect(failures, run_time > 30.0 and run_time < 150.0, "the run took %.1f s" % run_time)
 	var locked: Array[int] = []
 	var vaults: Array[int] = []
@@ -2256,7 +2263,7 @@ func test_scene_runs(step: String) -> Array[String]:
 
 #region Tutorial 04 (checked again): source rules
 
-## Who knows what: the door never knows what a key is, the key never knows the level, the level never rolls dice.
+## Who knows what: the door never knows what a key is, the key never knows the level, the level never draws random numbers.
 func test_key_rules() -> Array[String]:
 	var failures: Array[String] = []
 	var keys_word := RegEx.create_from_string("\\bkeys?\\b")
@@ -2275,11 +2282,11 @@ func test_key_rules() -> Array[String]:
 		_expect(failures, key_source.contains("model.rotation.y") and key_source.contains("model.position.y"), "%s/key.gd: the model does not spin and bob" % step)
 		for forbidden: String in ["RandomNumberGenerator", "Time."]:
 			_expect(failures, not key_source.contains(forbidden), "%s/key.gd uses %s" % [step, forbidden])
-	# The level, the door and the room never roll dice: only the chain does.
+	# The level, the door and the room never draw random numbers: only the chain does.
 	for step in STEPS:
 		for file: String in ["level.gd", "door.gd", "room.gd", "hud.gd"]:
 			_expect(failures, not FileAccess.get_file_as_string("res://steps/%s/%s" % [step, file]).contains("RandomNumberGenerator"), "%s/%s has a random generator" % [step, file])
-	# The chain has streams of dice, each in one place: _rng picks the rooms, _content_rng the locks, _prop_rng the props
+	# The chain has generators, each in one place: _rng picks the rooms, _content_rng the locks, _prop_rng the props
 	# (and, from step 5, _lamp_rng the lamp tints). Steps 0 to 2 run them through the whole chain; from step 3 on every
 	# room starts them again from Seeds.child(seed, stream name, room number), in the function that draws from them.
 	var own_draws := RegEx.create_from_string("(?<![_a-z])_rng\\.rand")
@@ -2356,8 +2363,8 @@ func test_locks_keep_rooms() -> Array[String]:
 				return failures
 	return failures
 
-## Raising the chance only adds locks: the dice are rolled for every room, so a room that stays locked keeps its key spot.
-## And a room keeps its roll whatever the goal room does further on.
+## Raising the chance only adds locks: the random numbers are drawn for every room, so a room that stays locked keeps its key spot.
+## And a room keeps its random numbers whatever the goal room does further on.
 func test_contents_second_stream() -> Array[String]:
 	var failures: Array[String] = []
 	for chain_script: GDScript in [Chain00, Chain]:
@@ -2374,7 +2381,7 @@ func test_contents_second_stream() -> Array[String]:
 			var near: Array = _plans_to_goal(chain_script, chain_seed, 12, 0.5).plans
 			var far: Array = _plans_to_goal(chain_script, chain_seed, 20, 0.5).plans
 			for i in 11: # room 11 is the one before the near goal: always open there
-				_expect(failures, near[i].locked == far[i].locked and near[i].key_spot == far[i].key_spot, "seed %d room %d: the goal room changed the roll of another room" % [chain_seed, i])
+				_expect(failures, near[i].locked == far[i].locked and near[i].key_spot == far[i].key_spot, "seed %d room %d: the goal room changed the random numbers of another room" % [chain_seed, i])
 			if failures.size() > 8:
 				return failures
 	return failures
@@ -3230,7 +3237,7 @@ func test_full_runs_all_spots_filled() -> Array[String]:
 
 #region Tutorial 05: source rules for data
 
-## Props and room weights are data: a Resource script with exports, .tres files, and a chain that only rolls and walks.
+## Props and room weights are data: a Resource script with exports, .tres files, and a chain that only draws and walks.
 func test_data_rules() -> Array[String]:
 	var failures: Array[String] = []
 	for step in STEPS:
@@ -3240,9 +3247,9 @@ func test_data_rules() -> Array[String]:
 			_expect(failures, set_source.contains("@export var %s" % export_name), "%s/prop_set.gd has no export %s" % [step, export_name])
 		var chain_source := FileAccess.get_file_as_string("res://steps/%s/room_chain.gd" % step)
 		_expect(failures, not chain_source.contains("PROP_CHANCE") and not chain_source.contains("PROP_SCENES"), "%s: the chain still has step 1's fixed chance or prop list" % step)
-		_expect(failures, chain_source.contains("static func weighted_pick(weights: Array[float], roll: float) -> int:"), "%s: no weighted_pick(weights, roll)" % step)
+		_expect(failures, chain_source.contains("static func weighted_pick(weights: Array[float], value: float) -> int:"), "%s: no weighted_pick(weights, value)" % step)
 		var pick := _function_body(chain_source, "static func weighted_pick(")
-		_expect(failures, not pick.contains("rand") and not pick.contains("PROP") and not pick.contains("ROOM"), "%s: weighted_pick rolls dice or knows the data: it only sums, compares and walks" % step)
+		_expect(failures, not pick.contains("rand") and not pick.contains("PROP") and not pick.contains("ROOM"), "%s: weighted_pick draws random numbers or knows the data: it only sums, compares and walks" % step)
 		for file in DirAccess.get_files_at("res://steps/%s/props" % step):
 			if file.ends_with(".tres"):
 				var text := FileAccess.get_file_as_string("res://steps/%s/props/%s" % [step, file])
@@ -3519,7 +3526,7 @@ func _room_props_problems(step: String, level: Node3D, index: int) -> Array[Stri
 #region Tutorial 05: the spot rules, exhaustively
 
 ## The rules of check_contents.gd, for every prop at every spot of every room type, and for every pair of spots:
-## whatever the dice give, the rules hold. Every set is widened to all five props for this, so step 1's "any prop
+## whatever the random numbers give, the rules hold. Every set is widened to all five props for this, so step 1's "any prop
 ## anywhere" is covered, too; the sets are put back afterwards.
 func test_prop_spot_rules() -> Array[String]:
 	var failures: Array[String] = []
@@ -3668,7 +3675,7 @@ func test_weighted_pick() -> Array[String]:
 	var failures: Array[String] = []
 	for step in STEPS:
 		var chain_script := _chain_script(step)
-		var pick := func(weights: Array[float], roll: float) -> int: return chain_script.weighted_pick(weights, roll)
+		var pick := func(weights: Array[float], value: float) -> int: return chain_script.weighted_pick(weights, value)
 		var two: Array[float] = [1.0, 3.0]
 		_expect(failures, pick.call(two, 0.0) == 0 and pick.call(two, 0.2499) == 0 and pick.call(two, 0.25) == 1 and pick.call(two, 0.9999999) == 1, "%s: [1, 3] splits at a quarter" % step)
 		var holes: Array[float] = [0.0, 2.0, 0.0, 2.0]
@@ -4115,7 +4122,7 @@ func _physical_keys(action: StringName) -> Array[String]:
 			keys.append(OS.get_keycode_string((event as InputEventKey).physical_keycode))
 	return keys
 
-## Presses and releases a key like a person does: through the input system, so the control that has the focus gets it.
+## Presses and releases a key like a player does: through the input system, so the control that has the focus gets it.
 func _key(code: Key, unicode := 0) -> void:
 	for pressed: bool in [true, false]:
 		var event := InputEventKey.new()
@@ -4311,7 +4318,7 @@ func test_typing_is_safe(step: String) -> Array[String]:
 
 	await _key(KEY_T, 116)
 	await _type_text("wasdrn tc") # the keys that walk, restart, step on to the next seed, open and copy
-	# W held down for half a second, as a person walking would while the box is up
+	# W held down for half a second, as a player walking would while the box is up
 	var hold := InputEventKey.new()
 	hold.keycode = KEY_W
 	hold.physical_keycode = KEY_W
@@ -4470,23 +4477,23 @@ func test_room_streams() -> Array[String]:
 			_expect(failures, seen.size() == total, "%s: %d child seeds, only %d different" % [step, total, seen.size()])
 		else:
 			_expect(failures, seen.size() < total, "%s: summed child seeds never meet (%d of %d different): the echo needs them to" % [step, seen.size(), total])
-		# The same seed is the same dice, a started-again generator forgets what it drew.
+		# The same seed is the same random numbers, a started-again generator forgets what it drew.
 		var first := RandomNumberGenerator.new()
 		var second := RandomNumberGenerator.new()
 		first.seed = seeds.child(42, "locks", 5)
 		second.seed = seeds.child(42, "locks", 5)
-		var rolls: Array[float] = []
+		var values: Array[float] = []
 		for i in 8:
-			rolls.append(first.randf())
+			values.append(first.randf())
 		first.seed = seeds.child(42, "locks", 5)
 		for i in 8:
-			_expect(failures, second.randf() == rolls[i] and first.randf() == rolls[i], "%s: the dice of a stream are not the same after starting it again" % step)
+			_expect(failures, second.randf() == values[i] and first.randf() == values[i], "%s: the random numbers of a stream are not the same after starting it again" % step)
 	return failures
 
-## The chain of a step with the experiment of the video written into its source: a feature that rolls `count` more dice
-## in room `room`, drawn from the lock generator right before the lock roll.
+## The chain of a step with the experiment of the video written into its source: a feature that calls randf() `count` more
+## times in room `room`, on the lock generator right before the lock's randf().
 var _patched_chains := {}
-func _chain_with_extra_dice(step: String, room: int, count: int) -> GDScript:
+func _chain_with_extra_calls(step: String, room: int, count: int) -> GDScript:
 	var key := "%s/%d/%d" % [step, room, count]
 	if _patched_chains.has(key):
 		return _patched_chains[key]
@@ -4495,20 +4502,20 @@ func _chain_with_extra_dice(step: String, room: int, count: int) -> GDScript:
 		return null
 	var script := GDScript.new()
 	script.source_code = source.replace(EXPERIMENT_ANCHOR, EXPERIMENT_LINES % [room, count] + EXPERIMENT_ANCHOR)
-	script.resource_path = "res://steps/%s/room_chain_extra_dice_%d_%d.gd" % [step, room, count] # the chain's preloads are relative to this path
+	script.resource_path = "res://steps/%s/room_chain_extra_calls_%d_%d.gd" % [step, room, count] # the chain's preloads are relative to this path
 	if script.reload() != OK:
 		return null
 	_patched_chains[key] = script
 	return script
 
-## Steps 0 and 1: the locks of every room share one stream, so three more dice in room k move the lock rolls of every
+## Steps 0 and 1: the locks of every room share one stream, so three more randf() calls in room k move the lock numbers of every
 ## room after it. The rooms and the props stay (they have other generators), the locks do not.
-func test_extra_dice_reshuffle() -> Array[String]:
+func test_extra_calls_reshuffle() -> Array[String]:
 	var failures: Array[String] = []
 	for step: String in ["step_00_start", "step_01_seed_text", "step_02_type_and_copy"]:
 		var base_script := _chain_script(step)
 		for room in EXPERIMENT_ROOMS:
-			var patched_script := _chain_with_extra_dice(step, room, 3)
+			var patched_script := _chain_with_extra_calls(step, room, 3)
 			_expect(failures, patched_script != null, "%s: the experiment does not compile or its anchor is gone" % step)
 			if patched_script == null:
 				continue
@@ -4523,9 +4530,9 @@ func test_extra_dice_reshuffle() -> Array[String]:
 				_expect(failures, base.size() == patched.size(), "%s seed %d: the experiment changed the number of rooms" % [step, chain_seed])
 				var any := false
 				for j in mini(base.size(), patched.size()):
-					_expect(failures, base[j].type == patched[j].type and base[j].transform == patched[j].transform and base[j].props == patched[j].props, "%s seed %d: the extra dice moved room %d or its props" % [step, chain_seed, j])
+					_expect(failures, base[j].type == patched[j].type and base[j].transform == patched[j].transform and base[j].props == patched[j].props, "%s seed %d: the extra calls moved room %d or its props" % [step, chain_seed, j])
 					if j < room:
-						_expect(failures, base[j].locked == patched[j].locked and base[j].key_spot == patched[j].key_spot, "%s seed %d: the extra dice in room %d moved the lock of room %d before it" % [step, chain_seed, room, j])
+						_expect(failures, base[j].locked == patched[j].locked and base[j].key_spot == patched[j].key_spot, "%s seed %d: the extra calls in room %d moved the lock of room %d before it" % [step, chain_seed, room, j])
 					elif j > room and j < 19:
 						rooms_after += 1
 						var differs: bool = base[j].locked != patched[j].locked or base[j].key_spot != patched[j].key_spot
@@ -4533,22 +4540,22 @@ func test_extra_dice_reshuffle() -> Array[String]:
 						any = any or differs
 				moved += 1 if any else 0
 			var share := moved / float(EXPERIMENT_SEEDS)
-			print("        %s, three more dice in room %d: the locks after it moved in %d of %d seeds, in %.0f%% of the %d rooms after it" % [step, room, moved, EXPERIMENT_SEEDS, 100.0 * rooms_moved / maxi(rooms_after, 1), rooms_after])
-			_expect(failures, share >= 0.8, "%s room %d: the locks after the extra dice moved in only %.0f%% of the seeds" % [step, room, share * 100.0])
+			print("        %s, three more randf() calls in room %d: the locks after it moved in %d of %d seeds, in %.0f%% of the %d rooms after it" % [step, room, moved, EXPERIMENT_SEEDS, 100.0 * rooms_moved / maxi(rooms_after, 1), rooms_after])
+			_expect(failures, share >= 0.8, "%s room %d: the locks after the extra calls moved in only %.0f%% of the seeds" % [step, room, share * 100.0])
 	return failures
 
-## Steps 2, 3 and 4: the same experiment moves nothing but the lock roll of the room itself. Rooms before it and after it are the
+## Steps 2, 3 and 4: the same experiment moves nothing but the lock numbers of the room itself. Rooms before it and after it are the
 ## same rooms with the same locks, keys, props and lamps, for every seed.
-func test_extra_dice_independent() -> Array[String]:
+func test_extra_calls_independent() -> Array[String]:
 	var failures: Array[String] = []
 	for step in _steps_from("step_03_room_seeds"):
 		var base_script := _chain_script(step)
 		for room in EXPERIMENT_ROOMS:
-			var patched_script := _chain_with_extra_dice(step, room, 3)
+			var patched_script := _chain_with_extra_calls(step, room, 3)
 			_expect(failures, patched_script != null, "%s: the experiment does not compile or its anchor is gone" % step)
 			if patched_script == null:
 				continue
-			var own_roll_moved := 0
+			var own_number_moved := 0
 			var compared := 0
 			for chain_seed in range(1, EXPERIMENT_SEEDS + 1):
 				if chain_seed % 25 == 0:
@@ -4559,14 +4566,14 @@ func test_extra_dice_independent() -> Array[String]:
 				for j in mini(base.size(), patched.size()):
 					compared += 1
 					if j == room:
-						_expect(failures, base[j].type == patched[j].type and base[j].transform == patched[j].transform and base[j].props == patched[j].props and base[j].get("lamp") == patched[j].get("lamp"), "%s seed %d: the extra dice moved more than the lock roll of room %d" % [step, chain_seed, j])
-						own_roll_moved += 1 if base[j].locked != patched[j].locked or base[j].key_spot != patched[j].key_spot else 0
+						_expect(failures, base[j].type == patched[j].type and base[j].transform == patched[j].transform and base[j].props == patched[j].props and base[j].get("lamp") == patched[j].get("lamp"), "%s seed %d: the extra calls moved more than the lock numbers of room %d" % [step, chain_seed, j])
+						own_number_moved += 1 if base[j].locked != patched[j].locked or base[j].key_spot != patched[j].key_spot else 0
 					else:
-						_expect(failures, _same_plan(base[j], patched[j], true), "%s seed %d: three more dice in room %d moved room %d" % [step, chain_seed, room, j])
+						_expect(failures, _same_plan(base[j], patched[j], true), "%s seed %d: three more randf() calls in room %d moved room %d" % [step, chain_seed, room, j])
 				if failures.size() > 8:
 					return failures
-			print("        %s, three more dice in room %d: %d rooms of %d seeds compared, nothing moved; the lock roll of room %d itself changed in %d seeds" % [step, room, compared, EXPERIMENT_SEEDS, room, own_roll_moved])
-			_expect(failures, own_roll_moved >= EXPERIMENT_SEEDS * 0.3, "%s room %d: the extra dice changed the room's own roll in only %d seeds: the experiment does not bite" % [step, room, own_roll_moved])
+			print("        %s, three more randf() calls in room %d: %d rooms of %d seeds compared, nothing moved; the lock of room %d itself changed in %d seeds" % [step, room, compared, EXPERIMENT_SEEDS, room, own_number_moved])
+			_expect(failures, own_number_moved >= EXPERIMENT_SEEDS * 0.3, "%s room %d: the extra calls changed the room's own lock in only %d seeds: the experiment does not bite" % [step, room, own_number_moved])
 	return failures
 
 func test_echo_before() -> Array[String]:

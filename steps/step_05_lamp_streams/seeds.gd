@@ -1,15 +1,15 @@
 extends RefCounted
-## Seeds you can share. A seed is a text a person can type, read out and copy ("BLUE-FOX", "42"). The game turns
+## Seeds you can share. A seed is a text you can type, read out and copy ("BLUE-FOX", "42"). The game turns
 ## it into a number for its random generators. Only static functions, no state: the same text is the same
 ## number on every machine, in every run.
-## A run is a tree of seeds: the run's seed is the root, every room has a seed of its own for each kind of dice
-## (child()), and a room's dice depend on nothing but the run, the kind and the room's number.
+## A run is a tree of seeds: the run's seed is the root, every room has a seed of its own for each stream
+## (child()). A room's random numbers depend on nothing but the run, the stream and its number.
 
 const MASK := 0xFFFFFFFF ## Seeds are 32-bit numbers.
 const MAX_LENGTH := 24 ## The most characters a seed text may have.
 const MAX_DIGITS := 9 ## Plain digits up to this length are the number itself.
 
-## What a person typed, made canonical: no spaces at the ends, capital letters. "blue-fox " and "BLUE-FOX" are one seed.
+## What you typed, made canonical: no spaces at the ends, capital letters. "blue-fox " and "BLUE-FOX" are one seed.
 static func normalize(text: String) -> String:
 	return text.strip_edges().to_upper()
 
@@ -30,7 +30,7 @@ static func text_hash(text: String) -> int:
 		hashed = ((hashed ^ byte) * 0x01000193) & MASK # FNV prime
 	return hashed
 
-## The seed of one stream of dice in one room: the run's seed, the name of the stream and the number of the room,
+## The seed of one stream in one room: the run's seed, the name of the stream and the number of the room,
 ## mixed (not added: see mix()). A room draws from its own stream, so what happens in room 5 can never move room 6,
 ## and the rooms of two runs are strangers to each other.
 static func child(parent: int, stream: String, index: int) -> int:
@@ -39,7 +39,7 @@ static func child(parent: int, stream: String, index: int) -> int:
 ## Two numbers into one, so that changing a single bit of either changes about half of the 32 bits of the result
 ## (a bit avalanche; this is the mixer of Squirrel Eiserloh's SquirrelNoise). Adding seeds gives neighbours:
 ## seed + room is the same number for (seed 42, room 6) and (seed 43, room 5), and two rooms with the same seed
-## roll the same dice. Mixed, the neighbours are strangers.
+## draw the same random numbers. Mixed, the neighbours are strangers.
 static func mix(position: int, salt: int) -> int:
 	var mixed := (position * 0xB5297A4D + salt) & MASK
 	mixed ^= mixed >> 8

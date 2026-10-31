@@ -23,7 +23,7 @@ const Seeds := preload("seeds.gd")
 
 const SPAWN_DEPTH := 1.5 ## Metres inside room 0, so the capsule starts clear of the wall.
 
-@export var seed_text := "42" ## The seed as a person types it. Plain digits are that number, any other text is hashed (seeds.gd).
+@export var seed_text := "42" ## The seed as you type it. Plain digits are that number, any other text is hashed (seeds.gd).
 @export_range(1, 500) var goal_room := 20 ## The room the run ends in.
 @export_range(0.0, 1.0) var lock_chance := 0.4 ## The chance for a room to be locked. Its key lies in the same room.
 @export var save_path := "user://best_times.json" ## Tests and recordings point it at a temporary file.
