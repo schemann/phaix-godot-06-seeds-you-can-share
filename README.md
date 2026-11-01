@@ -2,7 +2,10 @@
 
 Project files for tutorial 06 of the Godot 4 series by Phaix on YouTube (https://www.youtube.com/@Phaix).
 
-Make the seed of a generated Godot 4 level something you can send to a friend: a seed as text with a hash you own instead of the engine's, a box to type it and a key to copy it, a child seed for every room and every stream of random numbers so that a new feature moves nothing else, a mixer instead of a sum to avoid the deep echo, a headless check that measures it, and a lamp colour on a stream of its own. Every step is its own project folder.
+Make shareable seeds for a game like Roblox DOORS in Godot 4.
+Type a seed, copy it, send it to a friend: the same random rooms for both of you.
+
+A seed as text with a hash you own instead of the engine's, a box to type it and a key to copy it, a child seed for every room and every stream of random numbers so that a new feature moves nothing else, a mixer instead of a sum to avoid the deep echo, a headless check that measures it, and a lamp colour on a stream of its own. Every step is its own project folder.
 
 ![Screenshot](screenshot.png)
 
@@ -32,6 +35,14 @@ in the video and in the HUD.
 ```sh
 godot --headless --path . -s res://tests/run_tests.gd
 ```
+
+## Changed since the video
+
+- One fix went into every step folder after the video: the old rooms are now freed when the door behind the player has shut, not when the player enters the next room. Before, you could look back through that door while it was still closing and see a hole where the oldest room had been.
+- `door.gd` has a new signal, `closed`, emitted when the door has finished swinging shut (never when it is opened again on the way).
+- `level.gd` has a new function, `_on_door_closed(index)`, which frees the rooms behind that door and puts a wall where the doorway of the room just left was. `_spawn_room` connects the signal, and `_on_room_entered` only closes the door behind the player now.
+- `tests/run_tests.gd` has a new test, `test_rooms_wait_for_the_door`, and the streaming test expects the rooms to go when the door has shut.
+- The rest is as in the video.
 
 ## License
 
